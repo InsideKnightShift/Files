@@ -1,0 +1,3 @@
+SHEPHERD's PIT
+
+A game based on the idea of a "snake". However, it is more advanced graphically and sonically. In addition, the authors introduced the ability to attack enemies and collect various power-ups. In the game We will find 20 missions. The most important advantage is, of course, the world of Polans - the shepherd must collect cows and safely bring them to the barn :]
