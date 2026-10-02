@@ -1,5 +1,5 @@
 # =====================================================================
-#   InsideEARTH - KnightShift Multiplayer Setup v1.0
+#   InsideKnightShift Multiplayer Setup v1.0
 # =====================================================================
 
 # ---------------------------------------------------------------------
@@ -8,8 +8,8 @@
 #  level-repository were GUESSED from the Earth 2150 naming pattern -
 #  they do not point at anything real yet. Confirm/replace before use:
 #    GitHub repo : InsideKnightShift/Files
-#    VPN server  : vpnnetserverks.insideearth.info
-#    Subnet      : 10.21.90.0/24
+#    VPN server  : vpnnetserver-ks.insideearth.info
+#    Subnet      : 10.16.0.0/24
 #    Levels repo : InsideKnightShift/Levels
 # ---------------------------------------------------------------------
 
@@ -26,27 +26,27 @@ if (-not $isAdmin) {
 
 Clear-Host
 
-$host.ui.RawUI.WindowTitle = "InsideEARTH - KnightShift Multiplayer Setup"
+$host.ui.RawUI.WindowTitle = "InsideEKnightShift Multiplayer Setup"
 
 # Variable Definitions
-$Name            = 'InsideEARTH KnightShift Community Server'
-$ServerHost      = 'vpnnetserverks.insideearth.info'
+$Name            = 'InsideKnightShift Community Server'
+$ServerHost      = 'vpnnetserver-ks.insideearth.info'
 $ValueName       = 'AddressIP'
-$IEPort          = 17141
+$IEPort          = 17171
 $TWPort          = 17104
 $InstallOpenVPN  = $true
 $Repo            = 'InsideKnightShift/Files'
 $Ref             = 'refs/heads/main'
-$Subnet          = '10.21.90.0/24'
+$Subnet          = '10.16.0.0/24'
 $SubnetAliases   = @($Subnet, ($Subnet -replace '/24', '/255.255.255.0'))
 
 # Construct the formatted registry string for IP checking
-$addressIpFormatted = '"EarthNet""netserver.earthnet.de""InsideEARTH""vpnnetserverks.insideearth.info:17141"'
+$addressIpFormatted = '"EarthNet - InsideKnightShift""vpnnetserver-ks.insideearth.info""EarthNet - Topware""netserver.earthnet.de"'
 
 # Display Banner First
 Write-Host
 Write-Host " ===================================================" -ForegroundColor Green
-Write-Host "   InsideEARTH - KnightShift Multiplayer Setup v1.0" -ForegroundColor Green
+Write-Host "   InsideKnightShift Multiplayer Setup v1.0" -ForegroundColor Green
 Write-Host " ===================================================" -ForegroundColor Green
 Write-Host
 
@@ -99,7 +99,7 @@ if ($InstallOpenVPN) {
             Write-Host " - OpenVPN installation completed." -ForegroundColor Green
         }
 
-        $ovpnUrl  = "https://raw.githubusercontent.com/$Repo/$Ref/EarthNet/IKS-KS-VPN-TCP.ovpn"
+        $ovpnUrl  = "https://raw.githubusercontent.com/$Repo/$Ref/EarthNet/IKS-KnightShift-VPN-TCP.ovpn"
         $ovpnPath = Join-Path $env:TEMP 'IKS-KS-VPN-TCP.ovpn'
 
         Write-Host " - Downloading OpenVPN profile configuration..." -ForegroundColor Yellow
@@ -169,9 +169,10 @@ Write-Host
 Write-Host " [3/3] Configuring Windows Firewall Rules..." -ForegroundColor Cyan
 
 $fwRules = @(
-    @{ Name = 'IKS - Game Port (TCP 17121)'; Protocol = 'TCP'; LocalPort = '17121'; RemoteAddress = $Subnet },
-    @{ Name = 'IKS - Game Port (UDP 17121)'; Protocol = 'UDP'; LocalPort = '17121'; RemoteAddress = $Subnet },
-    @{ Name = 'IKS - ICMPv4 Allow Subnet';        Protocol = 'ICMPv4'; RemoteAddress = $Subnet }
+    @{ Name = 'IKS - DirectPlay Control (TCP 47624)';   Protocol = 'TCP';    LocalPort = '47624';     RemoteAddress = $Subnet },
+    @{ Name = 'IKS - DirectPlay Range (TCP 2300-2400)'; Protocol = 'TCP';    LocalPort = '2300-2400'; RemoteAddress = $Subnet },
+    @{ Name = 'IKS - DirectPlay Range (UDP 2300-2400)'; Protocol = 'UDP';    LocalPort = '2300-2400'; RemoteAddress = $Subnet },
+    @{ Name = 'IKS - ICMPv4 Allow Subnet';         	Protocol = 'ICMPv4'; RemoteAddress = $Subnet }
 )
 
 function Set-IKSFirewallRules {
