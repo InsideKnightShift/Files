@@ -26,7 +26,7 @@ if (-not $isAdmin) {
 
 Clear-Host
 
-$host.ui.RawUI.WindowTitle = "InsideKnightShift Multiplayer Setup"
+$host.ui.RawUI.WindowTitle = "InsideEKnightShift Multiplayer Setup"
 
 # Variable Definitions
 $Name            = 'InsideKnightShift Community Server'
@@ -50,6 +50,8 @@ Write-Host "   InsideKnightShift Multiplayer Setup v1.0" -ForegroundColor Green
 Write-Host " ===================================================" -ForegroundColor Green
 Write-Host
 
+
+
 # ---------- 1/3) OpenVPN Installation & Profile Setup -----------------
 Write-Host
 Write-Host " [1/3] OpenVPN Setup..." -ForegroundColor Cyan
@@ -58,26 +60,23 @@ if ($InstallOpenVPN) {
         if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
             Write-Host " - winget is not detected. Silently installing winget..." -ForegroundColor Yellow
 
-            $oldProgress = $ProgressPreference = 'SilentlyContinue'
+            $oldProgress = $ProgressPreference
+            $ProgressPreference = 'SilentlyContinue'
 
-            $tempDir = Join-Path$env:TEMP "WingetInstaller"
+            $tempDir = Join-Path $env:TEMP "WingetInstaller"
             New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
             try {
-                $depsZipPath = Join-Path $tempDir 'DesktopAppInstaller_Dependencies.zip'
-                $depsDir     = Join-Path $tempDir 'Dependencies'
-                $wingetPath  = Join-Path $tempDir 'Winget.msixbundle'
+                $vcLibsPath = Join-Path $tempDir 'VCLibs.appx'
+                $uiXamlPath = Join-Path $tempDir 'UIXaml.appx'
+                $wingetPath = Join-Path $tempDir 'Winget.msixbundle'
 
-                Invoke-WebRequest -Uri 'https://github.com/microsoft/winget-cli/releases/latest/download/DesktopAppInstaller_Dependencies.zip' -OutFile $depsZipPath -UseBasicParsing
+                Invoke-WebRequest -Uri 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx' -OutFile $vcLibsPath -UseBasicParsing
+                Invoke-WebRequest -Uri 'https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx' -OutFile $uiXamlPath -UseBasicParsing
                 Invoke-WebRequest -Uri 'https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' -OutFile $wingetPath -UseBasicParsing
 
-                Expand-Archive -Path $depsZipPath -DestinationPath $depsDir -Force
-
-                # Install all x64 dependency packages (VCLibs, UIXaml, and Microsoft.WindowsAppRuntime.1.8)
-                Get-ChildItem -Path $depsDir -Recurse -Include *.appx, *.msix \vert{} Where-Object {$_.FullName -match '\\x64\\' } | ForEach-Object {
-                    Add-AppxPackage -Path $_.FullName -ErrorAction SilentlyContinue
-                }
-
+                Add-AppxPackage -Path $vcLibsPath -ErrorAction SilentlyContinue
+                Add-AppxPackage -Path $uiXamlPath -ErrorAction SilentlyContinue
                 Add-AppxPackage -Path $wingetPath -ErrorAction Stop
 
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
@@ -101,10 +100,10 @@ if ($InstallOpenVPN) {
         }
 
         $ovpnUrl  = "https://raw.githubusercontent.com/$Repo/$Ref/EarthNet/IKS-KnightShift-VPN-TCP.ovpn"
-        $ovpnPath = Join-Path$env:TEMP 'IKS-KS-VPN-TCP.ovpn'
+        $ovpnPath = Join-Path $env:TEMP 'IKS-KS-VPN-TCP.ovpn'
 
         Write-Host " - Downloading OpenVPN profile configuration..." -ForegroundColor Yellow
-        Invoke-WebRequest -Uri $ovpnUrl -OutFile$ovpnPath -UseBasicParsing
+        Invoke-WebRequest -Uri $ovpnUrl -OutFile $ovpnPath -UseBasicParsing
 
         $ovpnCli = "${env:ProgramFiles}\OpenVPN Connect\openvpnconnect.exe"
         if (Test-Path $ovpnCli) {
@@ -112,7 +111,7 @@ if ($InstallOpenVPN) {
 
             $profileListJson = & "$ovpnCli" --list-profiles 2>$null | Out-String
             if ($profileListJson -match '"id":\s*"([^"]+)"') {
-                $existingId =$matches[1]
+                $existingId = $matches[1]
                 cmd.exe /c "`"$ovpnCli`" --remove-profile=$existingId >nul 2>&1"
             }
 
@@ -170,7 +169,7 @@ Write-Host
 Write-Host " [3/3] Configuring Windows Firewall Rules..." -ForegroundColor Cyan
 
 $fwRules = @(
-    @{ Name = 'IKS - DirectPlay Control (UDP 17771)';   Protocol = 'UDP';    LocalPort = '17771';     RemoteAddress = $Subnet },
+    @{ Name = 'IKS - DirectPlay Control (TCP 47624)';   Protocol = 'TCP';    LocalPort = '47624';     RemoteAddress = $Subnet },
     @{ Name = 'IKS - DirectPlay Range (TCP 2300-2400)'; Protocol = 'TCP';    LocalPort = '2300-2400'; RemoteAddress = $Subnet },
     @{ Name = 'IKS - DirectPlay Range (UDP 2300-2400)'; Protocol = 'UDP';    LocalPort = '2300-2400'; RemoteAddress = $Subnet },
     @{ Name = 'IKS - ICMPv4 Allow Subnet';         	Protocol = 'ICMPv4'; RemoteAddress = $Subnet }
