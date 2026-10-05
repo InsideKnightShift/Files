@@ -1,5 +1,5 @@
 # =====================================================================
-#   InsideKnightShift Multiplayer Setup v1.1
+#   InsideKnightShift Multiplayer Setup v1.2
 # =====================================================================
 
 # ---------------------------------------------------------------------
@@ -83,18 +83,27 @@ function Get-OpenVPNConnectExe {
 }
 
 # OpenVPNConnect.exe is a GUI-subsystem app, so '&' would not wait for it.
-# Start-Process -Wait guarantees each CLI call finishes before the next starts.
+# Each CLI call runs as its own process with captured output and a hard timeout,
+# so a call that unexpectedly opens the UI can never hang the setup.
+# --accept-gdpr / --skip-startup-dialogs go on EVERY call: per OpenVPN's docs, the app
+# "won't function" until GDPR consent is accepted, which on a fresh install made
+# --list-profiles return nothing at all.
 function Invoke-OpenVPNCli {
-    param([string]$Exe, [string]$Arguments)
+    param([string]$Exe, [string]$Arguments, [int]$TimeoutSec = 30)
     $outFile = [IO.Path]::GetTempFileName()
     $errFile = [IO.Path]::GetTempFileName()
     try {
-        $p = Start-Process -FilePath $Exe -ArgumentList $Arguments -Wait -PassThru -WindowStyle Hidden `
-                           -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        $p = Start-Process -FilePath $Exe -ArgumentList "--accept-gdpr --skip-startup-dialogs $Arguments" -PassThru `
+                           -WindowStyle Hidden -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        $null = $p.Handle   # Cache the handle now, otherwise ExitCode comes back empty without -Wait
+        if (-not $p.WaitForExit($TimeoutSec * 1000)) {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            throw "OpenVPN Connect did not respond within $TimeoutSec seconds ($Arguments)."
+        }
         [pscustomobject]@{
             ExitCode = $p.ExitCode
-            Output   = (Get-Content $outFile -Raw -ErrorAction SilentlyContinue)
-            Error    = (Get-Content $errFile -Raw -ErrorAction SilentlyContinue)
+            Output   = "$(Get-Content $outFile -Raw -ErrorAction SilentlyContinue)"
+            Error    = "$(Get-Content $errFile -Raw -ErrorAction SilentlyContinue)"
         }
     } finally {
         Remove-Item $outFile, $errFile -Force -ErrorAction SilentlyContinue
@@ -104,11 +113,19 @@ function Invoke-OpenVPNCli {
 function Get-OpenVPNProfiles {
     param([string]$Exe)
     $r = Invoke-OpenVPNCli -Exe $Exe -Arguments '--list-profiles'
-    $text = "$($r.Output)"
+    $text = $r.Output.Trim()
+
+    # No profiles yet: the CLI prints nothing (or an empty array). Treat as an empty list.
+    # This is safe: removal only ever targets profiles matched by our exact name, and the
+    # post-import check still verifies our profile actually exists.
+    if ($r.ExitCode -eq 0 -and ($text -eq '' -or $text -eq '[]')) { return }
+
     $start = $text.IndexOf('[')
     $end   = $text.LastIndexOf(']')
     if ($start -lt 0 -or $end -lt $start) {
-        throw "Could not read the existing OpenVPN profile list (exit code $($r.ExitCode))."
+        $raw = ("$text $($r.Error)").Trim()
+        if ($raw.Length -gt 200) { $raw = $raw.Substring(0, 200) + '...' }
+        throw "Could not read the OpenVPN profile list (exit code $($r.ExitCode)). Output: '$raw'"
     }
     $json = $text.Substring($start, $end - $start + 1)
     # Assign first: on Windows PowerShell 5.1, @($json | ConvertFrom-Json) nests the whole
@@ -120,7 +137,7 @@ function Get-OpenVPNProfiles {
 # Display Banner First
 Write-Host
 Write-Host " ===================================================" -ForegroundColor Green
-Write-Host "   InsideKnightShift Multiplayer Setup v1.1" -ForegroundColor Green
+Write-Host "   InsideKnightShift Multiplayer Setup v1.2" -ForegroundColor Green
 Write-Host " ===================================================" -ForegroundColor Green
 Write-Host
 
@@ -215,7 +232,7 @@ if (-not $InstallOpenVPN) {
                 if ($rm.ExitCode -ne 0) { throw "Could not remove old profile $($p.id) (exit code $($rm.ExitCode))." }
             }
 
-            $imp = Invoke-OpenVPNCli -Exe $ovpnCli -Arguments "--accept-gdpr --skip-startup-dialogs --import-profile=`"$ovpnPath`" --name=`"$OvpnProfileName`""
+            $imp = Invoke-OpenVPNCli -Exe $ovpnCli -Arguments "--import-profile=`"$ovpnPath`" --name=`"$OvpnProfileName`""
             if ($imp.ExitCode -ne 0) { throw "Import failed (exit code $($imp.ExitCode)). $($imp.Error)" }
 
             # Verify the result rather than trusting the exit code
