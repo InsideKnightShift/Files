@@ -64,14 +64,14 @@ if ($InstallOpenVPN) {
             New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
             try {
-                $depsZipPath = Join-Path$tempDir 'DesktopAppInstaller_Dependencies.zip'
-                $depsDir     = Join-Path$tempDir 'Dependencies'
-                $wingetPath  = Join-Path$tempDir 'Winget.msixbundle'
+                $depsZipPath = Join-Path $tempDir 'DesktopAppInstaller_Dependencies.zip'
+                $depsDir     = Join-Path $tempDir 'Dependencies'
+                $wingetPath  = Join-Path $tempDir 'Winget.msixbundle'
 
                 Invoke-WebRequest -Uri 'https://github.com/microsoft/winget-cli/releases/latest/download/DesktopAppInstaller_Dependencies.zip' -OutFile $depsZipPath -UseBasicParsing
                 Invoke-WebRequest -Uri 'https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' -OutFile $wingetPath -UseBasicParsing
 
-                Expand-Archive -Path $depsZipPath -DestinationPath$depsDir -Force
+                Expand-Archive -Path $depsZipPath -DestinationPath $depsDir -Force
 
                 # Install all x64 dependency packages (VCLibs, UIXaml, and Microsoft.WindowsAppRuntime.1.8)
                 Get-ChildItem -Path $depsDir -Recurse -Include *.appx, *.msix \vert{} Where-Object {$_.FullName -match '\\x64\\' } | ForEach-Object {
@@ -83,7 +83,7 @@ if ($InstallOpenVPN) {
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
                 Write-Host " - winget installed successfully." -ForegroundColor Green
             } finally {
-                $ProgressPreference =$oldProgress
+                $ProgressPreference = $oldProgress
                 Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
             }
         }
