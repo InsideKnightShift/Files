@@ -26,7 +26,7 @@ if (-not $isAdmin) {
 
 Clear-Host
 
-$host.ui.RawUI.WindowTitle = "InsideEKnightShift Multiplayer Setup"
+$host.ui.RawUI.WindowTitle = "InsideKnightShift Multiplayer Setup"
 
 # Variable Definitions
 $Name            = 'InsideKnightShift Community Server'
