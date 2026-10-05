@@ -58,7 +58,7 @@ if ($InstallOpenVPN) {
         if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
             Write-Host " - winget is not detected. Silently installing winget..." -ForegroundColor Yellow
 
-            $oldProgress = $ProgressPreference $ProgressPreference = 'SilentlyContinue'
+            $oldProgress = $ProgressPreference = 'SilentlyContinue'
 
             $tempDir = Join-Path$env:TEMP "WingetInstaller"
             New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
