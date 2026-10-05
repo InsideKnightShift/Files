@@ -57,20 +57,26 @@ Write-Host
 Write-Host " [1/3] OpenVPN Setup..." -ForegroundColor Cyan
 if ($InstallOpenVPN) {
     try {
-                $depsZipPath = Join-Path $tempDir 'DesktopAppInstaller_Dependencies.zip'
-                $depsDir     = Join-Path $tempDir 'Dependencies'
-                $wingetPath  = Join-Path $tempDir 'Winget.msixbundle'
+        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            Write-Host " - winget is not detected. Silently installing winget..." -ForegroundColor Yellow
 
-                Invoke-WebRequest -Uri 'https://github.com/microsoft/winget-cli/releases/latest/download/DesktopAppInstaller_Dependencies.zip' -OutFile $depsZipPath -UseBasicParsing
+            $oldProgress = $ProgressPreference
+            $ProgressPreference = 'SilentlyContinue'
+
+            $tempDir = Join-Path $env:TEMP "WingetInstaller"
+            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+            try {
+                $vcLibsPath = Join-Path $tempDir 'VCLibs.appx'
+                $uiXamlPath = Join-Path $tempDir 'UIXaml.appx'
+                $wingetPath = Join-Path $tempDir 'Winget.msixbundle'
+
+                Invoke-WebRequest -Uri 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx' -OutFile $vcLibsPath -UseBasicParsing
+                Invoke-WebRequest -Uri 'https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx' -OutFile $uiXamlPath -UseBasicParsing
                 Invoke-WebRequest -Uri 'https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' -OutFile $wingetPath -UseBasicParsing
 
-                Expand-Archive -Path $depsZipPath -DestinationPath $depsDir -Force
-
-                # Install all x64 dependency packages (VCLibs, UIXaml, and Microsoft.WindowsAppRuntime.1.8)
-                Get-ChildItem -Path $depsDir -Recurse -Include *.appx, *.msix | Where-Object { $_.FullName -match '\\x64\\' } | ForEach-Object {
-                    Add-AppxPackage -Path $_.FullName -ErrorAction SilentlyContinue
-                }
-
+                Add-AppxPackage -Path $vcLibsPath -ErrorAction SilentlyContinue
+                Add-AppxPackage -Path $uiXamlPath -ErrorAction SilentlyContinue
                 Add-AppxPackage -Path $wingetPath -ErrorAction Stop
 
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
@@ -163,7 +169,7 @@ Write-Host
 Write-Host " [3/3] Configuring Windows Firewall Rules..." -ForegroundColor Cyan
 
 $fwRules = @(
-    @{ Name = 'IKS - DirectPlay Control (UDP 17771)';   Protocol = 'UDP';    LocalPort = '17771';     RemoteAddress = $Subnet },
+    @{ Name = 'IKS - DirectPlay Control (TCP 47624)';   Protocol = 'TCP';    LocalPort = '47624';     RemoteAddress = $Subnet },
     @{ Name = 'IKS - DirectPlay Range (TCP 2300-2400)'; Protocol = 'TCP';    LocalPort = '2300-2400'; RemoteAddress = $Subnet },
     @{ Name = 'IKS - DirectPlay Range (UDP 2300-2400)'; Protocol = 'UDP';    LocalPort = '2300-2400'; RemoteAddress = $Subnet },
     @{ Name = 'IKS - ICMPv4 Allow Subnet';         	Protocol = 'ICMPv4'; RemoteAddress = $Subnet }
